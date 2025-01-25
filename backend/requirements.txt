@@ -1,0 +1,1 @@
+fastapi==0.103.0\npython-jose[cryptography]==3.3.0\npasslib[bcrypt]==1.7.4\npython-multipart==0.0.6\nsupabase==1.0.3\npytest==7.4.0\nhttpx==0.24.1\nuvicorn==0.23.2

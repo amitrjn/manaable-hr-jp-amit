@@ -1,0 +1,1 @@
+# Leave Management Web Application\n\nA comprehensive leave management system built with Vue.js and Python microservices.\n\n## Setup Instructions\n\n### Frontend\n```bash\ncd frontend\nnpm install\nnpm run dev\n```\n\n### Backend\n```bash\ncd backend\npython -m venv venv\nsource venv/bin/activate\npip install -r requirements.txt\n```
