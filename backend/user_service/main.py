@@ -2,7 +2,16 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from .config import supabase
+import os
+from supabase import create_client, Client
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not all([SUPABASE_URL, SUPABASE_KEY]):
+    raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="User Service")
 
