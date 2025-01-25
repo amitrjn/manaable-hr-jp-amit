@@ -69,22 +69,12 @@ def mock_supabase():
                         })
                 mock_eq.execute.return_value.data = result_data
             return mock_eq
-            
+        
+        mock_select.eq = eq_side_effect
+        
         # If no args, return all users
         if not args and not kwargs:
             mock_select.execute.return_value.data = mock_data["users"]
-            return mock_select
-            
-        return mock_select
-        mock_select.eq = eq_side_effect
-        
-        # Return all created users for general select
-        if not args and not kwargs:
-            mock_select.execute.return_value.data = list(created_users.values())
-            return mock_select
-
-        # If we have args but no data set yet, initialize with empty list
-        mock_select.execute.return_value.data = []
         return mock_select
     mock_table.select = select_side_effect
     
@@ -125,14 +115,19 @@ def mock_supabase():
         def eq_side_effect(*args, **kwargs):
             mock_eq = MagicMock()
             user_id = args[1]
-            if user_id in created_users:
+            matching_users = [u for u in mock_data["users"] if u["id"] == user_id]
+            if matching_users:
                 now = datetime.now().isoformat()
                 updated_data = {
-                    **created_users[user_id],
+                    **matching_users[0],
                     **data,
                     "updated_at": now
                 }
-                created_users[user_id] = updated_data
+                # Update user in mock data
+                for i, user in enumerate(mock_data["users"]):
+                    if user["id"] == user_id:
+                        mock_data["users"][i] = updated_data
+                        break
                 mock_eq.execute.return_value.data = [updated_data]
             else:
                 mock_eq.execute.return_value.data = []
@@ -154,28 +149,34 @@ def mock_supabase():
                 def relations_eq(*args, **kwargs):
                     mock_eq = MagicMock()
                     if args[0] == "manager_id":
-                        team_relations = [r for r in created_relations if r["manager_id"] == args[1]]
+                        team_relations = [r for r in mock_data["relations"] if r["manager_id"] == args[1]]
+                        result_data = []
                         for relation in team_relations:
-                            relation["users"] = created_users.get(relation["member_id"])
-                        mock_eq.execute.return_value.data = team_relations
+                            member = next((u for u in mock_data["users"] if u["id"] == relation["member_id"]), None)
+                            if member:
+                                result_data.append({
+                                    **relation,
+                                    "users": member
+                                })
+                        mock_eq.execute.return_value.data = result_data
                     else:
                         mock_eq.execute.return_value.data = []
                     return mock_eq
                 
                 mock_select.eq = relations_eq
-                mock_select.execute.return_value.data = list(created_relations)
+                mock_select.execute.return_value.data = mock_data["relations"]
                 return mock_select
             
             def relations_insert(data):
                 mock_insert = MagicMock()
-                relation_id = f"relation-{len(created_relations) + 1}"
+                relation_id = f"relation-{len(mock_data['relations']) + 1}"
                 now = datetime.now().isoformat()
                 relation_data = {
                     "id": relation_id,
                     **data,
                     "created_at": now
                 }
-                created_relations.append(relation_data)
+                mock_data["relations"].append(relation_data)
                 mock_insert.execute.return_value.data = [relation_data]
                 return mock_insert
             
