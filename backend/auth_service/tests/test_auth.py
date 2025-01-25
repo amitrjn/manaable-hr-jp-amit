@@ -4,11 +4,6 @@ import os
 import sys
 from pathlib import Path
 
-# Set test environment variables
-os.environ["SUPABASE_URL"] = "https://test.supabase.co"
-os.environ["SUPABASE_KEY"] = "test-key"
-os.environ["JWT_SECRET"] = "test-secret"
-
 # Add the service root directory to Python path
 service_root = Path(__file__).parent.parent
 sys.path.append(str(service_root))
