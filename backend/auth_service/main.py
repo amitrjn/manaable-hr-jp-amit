@@ -11,14 +11,17 @@ from supabase import create_client, Client
 
 def get_supabase_client() -> Client:
     """Get Supabase client instance."""
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
-    jwt_secret = os.getenv("JWT_SECRET")
+    global supabase
+    if supabase is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+        jwt_secret = os.getenv("JWT_SECRET")
 
-    if not all([url, key, jwt_secret]):
-        raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY, JWT_SECRET")
+        if not all([url, key, jwt_secret]):
+            raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY, JWT_SECRET")
 
-    return create_client(url, key)
+        supabase = create_client(url, key)
+    return supabase
 
 # Initialize client lazily to allow mocking in tests
 supabase: Client = None
@@ -58,7 +61,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             raise HTTPException(status_code=401, detail="Could not validate credentials")
         
         # Get user from Supabase
-        user = supabase.auth.get_user(token)
+        client = get_supabase_client()
+        user = client.auth.get_user(token)
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
             

@@ -7,13 +7,16 @@ from supabase import create_client, Client
 
 def get_supabase_client() -> Client:
     """Get Supabase client instance."""
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
+    global supabase
+    if supabase is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
 
-    if not all([url, key]):
-        raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY")
+        if not all([url, key]):
+            raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY")
 
-    return create_client(url, key)
+        supabase = create_client(url, key)
+    return supabase
 
 # Initialize client lazily to allow mocking in tests
 supabase: Client = None
@@ -49,7 +52,8 @@ class ManagerMemberRelation(BaseModel):
 @app.get("/users", response_model=List[User])
 async def get_users():
     try:
-        response = supabase.table("users").select("*").execute()
+        client = get_supabase_client()
+        response = client.table("users").select("*").execute()
         return response.data
     except Exception as e:
         raise HTTPException(
@@ -67,8 +71,9 @@ async def create_user(user: UserCreate):
                 detail="Invalid role. Must be one of: MEMBER, MANAGER, ADMIN"
             )
         
+        client = get_supabase_client()
         # Check if user already exists
-        existing_user = supabase.table("users").select("*").eq("email", user.email).execute()
+        existing_user = client.table("users").select("*").eq("email", user.email).execute()
         if existing_user.data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -76,7 +81,7 @@ async def create_user(user: UserCreate):
             )
         
         # Create user
-        response = supabase.table("users").insert({
+        response = client.table("users").insert({
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
@@ -95,8 +100,9 @@ async def create_user(user: UserCreate):
 @app.put("/users/{user_id}", response_model=User)
 async def update_user(user_id: str, user: UserUpdate):
     try:
+        client = get_supabase_client()
         # Check if user exists
-        existing_user = supabase.table("users").select("*").eq("id", user_id).execute()
+        existing_user = client.table("users").select("*").eq("id", user_id).execute()
         if not existing_user.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -118,7 +124,7 @@ async def update_user(user_id: str, user: UserUpdate):
             update_data["role"] = user.role
         
         # Update user
-        response = supabase.table("users").update(update_data).eq("id", user_id).execute()
+        response = client.table("users").update(update_data).eq("id", user_id).execute()
         return response.data[0]
     except HTTPException as e:
         raise e
@@ -131,8 +137,9 @@ async def update_user(user_id: str, user: UserUpdate):
 @app.get("/users/{user_id}/team", response_model=List[User])
 async def get_user_team(user_id: str):
     try:
+        client = get_supabase_client()
         # Check if user exists and is a manager
-        user = supabase.table("users").select("*").eq("id", user_id).execute()
+        user = client.table("users").select("*").eq("id", user_id).execute()
         if not user.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -145,7 +152,7 @@ async def get_user_team(user_id: str):
             )
         
         # Get team members
-        team = supabase.table("manager_member_relations") \
+        team = client.table("manager_member_relations") \
             .select("users!member_id(*)") \
             .eq("manager_id", user_id) \
             .execute()
@@ -162,9 +169,10 @@ async def get_user_team(user_id: str):
 @app.post("/users/manager-assignment", response_model=ManagerMemberRelation)
 async def assign_manager(relation: ManagerMemberRelation):
     try:
+        client = get_supabase_client()
         # Check if both users exist
-        manager = supabase.table("users").select("*").eq("id", relation.manager_id).execute()
-        member = supabase.table("users").select("*").eq("id", relation.member_id).execute()
+        manager = client.table("users").select("*").eq("id", relation.manager_id).execute()
+        member = client.table("users").select("*").eq("id", relation.member_id).execute()
         
         if not manager.data or not member.data:
             raise HTTPException(
@@ -180,7 +188,7 @@ async def assign_manager(relation: ManagerMemberRelation):
             )
         
         # Check if assignment already exists
-        existing = supabase.table("manager_member_relations") \
+        existing = client.table("manager_member_relations") \
             .select("*") \
             .eq("manager_id", relation.manager_id) \
             .eq("member_id", relation.member_id) \
@@ -193,7 +201,7 @@ async def assign_manager(relation: ManagerMemberRelation):
             )
         
         # Create assignment
-        response = supabase.table("manager_member_relations").insert({
+        response = client.table("manager_member_relations").insert({
             "manager_id": relation.manager_id,
             "member_id": relation.member_id
         }).execute()

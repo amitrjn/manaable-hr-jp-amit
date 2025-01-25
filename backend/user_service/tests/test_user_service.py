@@ -3,12 +3,14 @@ from fastapi.testclient import TestClient
 import os
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 # Add the service root directory to Python path
 service_root = Path(__file__).parent.parent
 sys.path.append(str(service_root))
 
-from main import app, User, UserCreate, UserUpdate, ManagerMemberRelation
+with patch('main.get_supabase_client'):
+    from main import app, User, UserCreate, UserUpdate, ManagerMemberRelation
 
 client = TestClient(app)
 
