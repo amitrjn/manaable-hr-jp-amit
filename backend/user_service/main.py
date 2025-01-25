@@ -55,6 +55,12 @@ async def get_users():
         client = get_supabase_client()
         response = client.table("users").select("*").execute()
         return response.data
+    except ValueError as e:
+        # Handle missing environment variables
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service configuration error"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

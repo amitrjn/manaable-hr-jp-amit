@@ -18,6 +18,22 @@ def mock_supabase():
             "role": "MEMBER"
         }
     )
+    def sign_in_with_password_side_effect(credentials):
+        if credentials["email"] == "test@example.com" and credentials["password"] == "testpass":
+            return MagicMock(
+                user=MagicMock(
+                    id="test-user-id",
+                    email="test@example.com",
+                    user_metadata={
+                        "first_name": "Test",
+                        "last_name": "User",
+                        "role": "MEMBER"
+                    }
+                )
+            )
+        return MagicMock(user=None)
+    
+    mock_auth.sign_in_with_password.side_effect = sign_in_with_password_side_effect
     mock_client.auth = mock_auth
     
     # Mock table operations

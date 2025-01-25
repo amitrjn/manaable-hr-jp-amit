@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import FastAPI, Depends, HTTPException, status, Form
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from datetime import datetime, timedelta
@@ -55,7 +55,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        jwt_secret = os.getenv("JWT_SECRET")
+        if not jwt_secret:
+            raise HTTPException(status_code=500, detail="JWT_SECRET not configured")
+            
+        payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
         email: str = payload.get("email")
         if email is None:
             raise HTTPException(status_code=401, detail="Could not validate credentials")
@@ -76,9 +80,39 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
 @app.post("/token", response_model=Token)
-async def login_for_access_token():
-    # Implementation will be added in the authentication phase
-    pass
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    try:
+        client = get_supabase_client()
+        response = client.auth.sign_in_with_password({
+            "email": form_data.username,
+            "password": form_data.password
+        })
+        
+        if not response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Create access token
+        access_token = jwt.encode(
+            {
+                "sub": response.user.id,
+                "email": form_data.username,
+                "exp": datetime.utcnow() + timedelta(minutes=30)
+            },
+            os.getenv("JWT_SECRET", ""),
+            algorithm="HS256"
+        )
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):

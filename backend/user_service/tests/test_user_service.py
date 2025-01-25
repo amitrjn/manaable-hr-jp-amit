@@ -51,7 +51,12 @@ def test_create_user_invalid_role():
 def test_get_users():
     response = client.get("/users")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert "id" in data[0]
+    assert "email" in data[0]
+    assert "role" in data[0]
 
 def test_update_user():
     # First create a user
