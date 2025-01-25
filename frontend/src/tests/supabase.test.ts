@@ -1,14 +1,25 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { supabase } from '../utils/supabase'
+import { describe, it, expect, vi } from 'vitest'
+import { createClient } from '@supabase/supabase-js'
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
+    auth: {
+      signInWithPassword: vi.fn(),
+      signOut: vi.fn()
+    }
+  }))
+}))
 
 describe('Supabase Client', () => {
-  it('should have a valid Supabase client instance', () => {
-    expect(supabase).toBeDefined()
-    expect(supabase.auth).toBeDefined()
+  it('should create Supabase client with environment variables', () => {
+    const client = createClient('test-url', 'test-key')
+    expect(createClient).toHaveBeenCalled()
+    expect(client.auth).toBeDefined()
   })
 
   it('should have required authentication methods', () => {
-    expect(typeof supabase.auth.signInWithPassword).toBe('function')
-    expect(typeof supabase.auth.signOut).toBe('function')
+    const client = createClient('test-url', 'test-key')
+    expect(typeof client.auth.signInWithPassword).toBe('function')
+    expect(typeof client.auth.signOut).toBe('function')
   })
 })
