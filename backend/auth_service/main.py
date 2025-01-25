@@ -6,7 +6,17 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from config import supabase, JWT_SECRET
+import os
+from supabase import create_client, Client
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+JWT_SECRET = os.getenv("JWT_SECRET")
+
+if not all([SUPABASE_URL, SUPABASE_KEY, JWT_SECRET]):
+    raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY, JWT_SECRET")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="Auth Service")
 

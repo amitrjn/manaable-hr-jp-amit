@@ -2,8 +2,16 @@ import pytest
 from fastapi.testclient import TestClient
 import os
 import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pathlib import Path
+
+# Set test environment variables
+os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+os.environ["SUPABASE_KEY"] = "test-key"
+
+# Add the service root directory to Python path
+service_root = Path(__file__).parent.parent
+sys.path.append(str(service_root))
+
 from main import app, User, UserCreate, UserUpdate, ManagerMemberRelation
 
 client = TestClient(app)
