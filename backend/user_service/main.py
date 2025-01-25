@@ -5,13 +5,18 @@ from datetime import datetime
 import os
 from supabase import create_client, Client
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+def get_supabase_client() -> Client:
+    """Get Supabase client instance."""
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
 
-if not all([SUPABASE_URL, SUPABASE_KEY]):
-    raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY")
+    if not all([url, key]):
+        raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return create_client(url, key)
+
+# Initialize client lazily to allow mocking in tests
+supabase: Client = None
 
 app = FastAPI(title="User Service")
 

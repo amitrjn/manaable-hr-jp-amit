@@ -22,7 +22,7 @@ def mock_supabase():
     }]
     mock_client.table.return_value = mock_table
     
-    with patch('main.supabase', mock_client):
+    with patch('main.get_supabase_client', return_value=mock_client):
         yield mock_client
 
 @pytest.fixture(autouse=True)
