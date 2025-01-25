@@ -87,8 +87,10 @@ def test_get_user_team():
     assert manager_response.status_code == 200
     manager_id = manager_response.json()["id"]
     
-    # Create a member
-    member_response = client.post("/users", json=test_user_data)
+    # Create a member with unique email
+    member_data = test_user_data.copy()
+    member_data["email"] = "team_member@example.com"
+    member_response = client.post("/users", json=member_data)
     assert member_response.status_code == 200
     member_id = member_response.json()["id"]
     
@@ -122,8 +124,14 @@ def test_assign_manager():
     assert manager_response.status_code == 200
     manager_id = manager_response.json()["id"]
     
-    # Create a member
-    member_response = client.post("/users", json=test_user_data)
+    # Create a member with unique email
+    member_data = {
+        "email": "member1@example.com",
+        "first_name": "Test",
+        "last_name": "Member",
+        "role": "MEMBER"
+    }
+    member_response = client.post("/users", json=member_data)
     assert member_response.status_code == 200
     member_id = member_response.json()["id"]
     
@@ -145,8 +153,10 @@ def test_assign_manager_invalid_manager():
     assert user_response.status_code == 200
     user_id = user_response.json()["id"]
     
-    # Create another user
-    member_response = client.post("/users", json=test_user_data)
+    # Create another user with different email
+    member_data = test_user_data.copy()
+    member_data["email"] = "member2@example.com"
+    member_response = client.post("/users", json=member_data)
     assert member_response.status_code == 200
     member_id = member_response.json()["id"]
     

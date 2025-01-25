@@ -32,10 +32,15 @@ def mock_supabase():
     
     # Store created users for test consistency
     created_users = {
-        "test-id": test_user,
-        "manager-id": test_manager
+        "test-id": test_user.copy(),
+        "manager-id": test_manager.copy()
     }
-    created_relations = []
+    created_relations = [{
+        "id": "relation-1",
+        "manager_id": "manager-id",
+        "member_id": "test-id",
+        "created_at": datetime.now().isoformat()
+    }]
     user_id_counter = 2  # Start after our initial test and manager users
     
     # Configure mock table operations
@@ -47,8 +52,12 @@ def mock_supabase():
         def eq_side_effect(*args, **kwargs):
             mock_eq = MagicMock()
             if args[0] == "email":
-                # For email checks during user creation, return empty to allow creation
-                mock_eq.execute.return_value.data = []
+                # Check if email exists in created users
+                matching_users = []
+                for user in created_users.values():
+                    if user["email"] == args[1]:
+                        matching_users.append(user)
+                mock_eq.execute.return_value.data = matching_users
             elif args[0] == "id":
                 if args[1] == "non-existent-id":
                     mock_eq.execute.return_value.data = []
@@ -75,7 +84,10 @@ def mock_supabase():
         mock_select.eq = eq_side_effect
         
         # Return all created users for general select
-        mock_select.execute.return_value.data = list(created_users.values())
+        if not args and not kwargs:
+            # For general select, return all users
+            mock_select.execute.return_value.data = list(created_users.values())
+        mock_select.execute.return_value.data = mock_select.execute.return_value.data or []
         return mock_select
     mock_table.select = select_side_effect
     

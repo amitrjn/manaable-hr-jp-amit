@@ -183,7 +183,11 @@ async def get_user_team(user_id: str):
         if not team.data:
             return []
             
-        return [member["users"] for member in team.data if "users" in member]
+        team_members = []
+        for member in team.data:
+            if member.get("users"):
+                team_members.append(member["users"])
+        return team_members
     except HTTPException as e:
         raise e
     except Exception as e:
