@@ -86,13 +86,22 @@ async def create_user(user: UserCreate):
                 detail="User with this email already exists"
             )
         
-        # Create user
+        # Create user with current timestamp
+        now = datetime.utcnow().isoformat()
         response = client.table("users").insert({
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "role": user.role
+            "role": user.role,
+            "created_at": now,
+            "updated_at": now
         }).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user"
+            )
         
         return response.data[0]
     except HTTPException as e:
@@ -129,8 +138,14 @@ async def update_user(user_id: str, user: UserUpdate):
                 )
             update_data["role"] = user.role
         
-        # Update user
+        # Update user with timestamp
+        update_data["updated_at"] = datetime.utcnow().isoformat()
         response = client.table("users").update(update_data).eq("id", user_id).execute()
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update user"
+            )
         return response.data[0]
     except HTTPException as e:
         raise e
@@ -146,24 +161,29 @@ async def get_user_team(user_id: str):
         client = get_supabase_client()
         # Check if user exists and is a manager
         user = client.table("users").select("*").eq("id", user_id).execute()
+        
         if not user.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
+            
         if user.data[0]["role"] != "MANAGER":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User is not a manager"
             )
         
-        # Get team members
+        # Get team members with join
         team = client.table("manager_member_relations") \
-            .select("users!member_id(*)") \
+            .select("*, users!inner(*)") \
             .eq("manager_id", user_id) \
             .execute()
         
-        return [member["users"] for member in team.data]
+        if not team.data:
+            return []
+            
+        return [member["users"] for member in team.data if "users" in member]
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -206,11 +226,19 @@ async def assign_manager(relation: ManagerMemberRelation):
                 detail="This manager-member relationship already exists"
             )
         
-        # Create assignment
+        # Create assignment with current timestamp
+        now = datetime.utcnow().isoformat()
         response = client.table("manager_member_relations").insert({
             "manager_id": relation.manager_id,
-            "member_id": relation.member_id
+            "member_id": relation.member_id,
+            "created_at": now
         }).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create manager-member relationship"
+            )
         
         return response.data[0]
     except HTTPException as e:
