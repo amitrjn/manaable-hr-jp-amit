@@ -20,13 +20,15 @@ def test_read_users_me_unauthorized():
     assert response.json()["detail"] == "Not authenticated"
 
 def test_token_endpoint():
+    # Test successful login
+    form_data = {
+        "username": "test@example.com",
+        "password": "testpass",
+        "grant_type": "password"
+    }
     response = client.post(
         "/token",
-        data={
-            "username": "test@example.com",
-            "password": "testpass",
-            "grant_type": "password"
-        },
+        data=form_data,
         headers={"Content-Type": "application/x-www-form-urlencoded"}
     )
     assert response.status_code == 200
@@ -34,14 +36,15 @@ def test_token_endpoint():
     assert "access_token" in data
     assert data["token_type"] == "bearer"
 
-def test_token_endpoint_invalid_credentials():
+    # Test invalid credentials
+    invalid_form_data = {
+        "username": "wrong@example.com",
+        "password": "wrongpass",
+        "grant_type": "password"
+    }
     response = client.post(
         "/token",
-        data={
-            "username": "invalid@example.com",
-            "password": "wrongpass",
-            "grant_type": "password"
-        },
+        data=invalid_form_data,
         headers={"Content-Type": "application/x-www-form-urlencoded"}
     )
     assert response.status_code == 401

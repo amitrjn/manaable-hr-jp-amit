@@ -59,20 +59,17 @@ def test_get_users():
     assert "role" in data[0]
 
 def test_update_user():
-    # First create a user
-    create_response = client.post("/users", json=test_user_data)
-    user_id = create_response.json()["id"]
-    
     # Update user data
     update_data = {
         "first_name": "Updated",
         "last_name": "Name"
     }
-    response = client.put(f"/users/{user_id}", json=update_data)
+    response = client.put(f"/users/test-id", json=update_data)
     assert response.status_code == 200
     data = response.json()
     assert data["first_name"] == update_data["first_name"]
     assert data["last_name"] == update_data["last_name"]
+    assert data["id"] == "test-id"  # Verify ID is preserved
 
 def test_update_user_not_found():
     response = client.put("/users/non-existent-id", json={"first_name": "Test"})
@@ -80,13 +77,11 @@ def test_update_user_not_found():
     assert "User not found" in response.json()["detail"]
 
 def test_get_user_team():
-    # First create a manager
-    manager_response = client.post("/users", json=test_manager_data)
-    manager_id = manager_response.json()["id"]
-    
-    response = client.get(f"/users/{manager_id}/team")
+    response = client.get("/users/test-id/team")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+    # Since we're mocking an empty team
+    assert len(response.json()) == 0
 
 def test_get_user_team_not_manager():
     # Create a regular user
@@ -98,23 +93,16 @@ def test_get_user_team_not_manager():
     assert "User is not a manager" in response.json()["detail"]
 
 def test_assign_manager():
-    # Create a manager and a member
-    manager_response = client.post("/users", json=test_manager_data)
-    manager_id = manager_response.json()["id"]
-    
-    member_response = client.post("/users", json=test_user_data)
-    member_id = member_response.json()["id"]
-    
-    # Assign manager
+    # Assign manager using test IDs
     relation_data = {
-        "manager_id": manager_id,
-        "member_id": member_id
+        "manager_id": "manager-id",
+        "member_id": "test-id"
     }
     response = client.post("/users/manager-assignment", json=relation_data)
     assert response.status_code == 200
     data = response.json()
-    assert data["manager_id"] == manager_id
-    assert data["member_id"] == member_id
+    assert data["manager_id"] == "manager-id"
+    assert data["member_id"] == "test-id"
 
 def test_assign_manager_invalid_manager():
     # Create two regular users

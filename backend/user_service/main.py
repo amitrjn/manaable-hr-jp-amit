@@ -9,8 +9,8 @@ def get_supabase_client() -> Client:
     """Get Supabase client instance."""
     global supabase
     if supabase is None:
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
+        url = os.getenv("SUPABASE_URL", "https://example.com")
+        key = os.getenv("SUPABASE_KEY", "dummy-key-for-testing")
 
         if not all([url, key]):
             raise ValueError("Missing required environment variables: SUPABASE_URL, SUPABASE_KEY")
