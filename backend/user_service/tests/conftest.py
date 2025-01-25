@@ -30,18 +30,12 @@ def mock_supabase():
         "updated_at": datetime.now().isoformat()
     }
     
-    # Store created users for test consistency
-    created_users = {
-        "test-id": test_user.copy(),
-        "manager-id": test_manager.copy()
+    # Initialize mock data store with test users
+    mock_data = {
+        "users": [test_user.copy(), test_manager.copy()],  # Start with test users
+        "relations": []
     }
-    created_relations = [{
-        "id": "relation-1",
-        "manager_id": "manager-id",
-        "member_id": "test-id",
-        "created_at": datetime.now().isoformat()
-    }]
-    user_id_counter = 2  # Start after our initial test and manager users
+    user_id_counter = 2  # Start after initial test users
     
     # Configure mock table operations
     mock_table = MagicMock()
@@ -52,65 +46,75 @@ def mock_supabase():
         def eq_side_effect(*args, **kwargs):
             mock_eq = MagicMock()
             if args[0] == "email":
-                # Check if email exists in created users
-                matching_users = []
-                for user in created_users.values():
-                    if user["email"] == args[1]:
-                        matching_users.append(user)
+                # Check if email exists in mock data
+                matching_users = [u for u in mock_data["users"] if u["email"] == args[1]]
                 mock_eq.execute.return_value.data = matching_users
             elif args[0] == "id":
                 if args[1] == "non-existent-id":
                     mock_eq.execute.return_value.data = []
                 else:
-                    # Return user if it exists in our created users
-                    user = created_users.get(args[1])
-                    mock_eq.execute.return_value.data = [user] if user else []
+                    # Return user if it exists in mock data
+                    matching_users = [u for u in mock_data["users"] if u["id"] == args[1]]
+                    mock_eq.execute.return_value.data = matching_users
             elif args[0] == "manager_id":
                 # Return team members for this manager
-                if args[1] == "manager-id":
-                    mock_eq.execute.return_value.data = [{
-                        "id": "relation-1",
-                        "manager_id": "manager-id",
-                        "member_id": "test-id",
-                        "users": test_user,
-                        "created_at": datetime.now().isoformat()
-                    }]
-                else:
-                    team_relations = [r for r in created_relations if r["manager_id"] == args[1]]
-                    for relation in team_relations:
-                        relation["users"] = created_users.get(relation["member_id"])
-                    mock_eq.execute.return_value.data = team_relations
+                team_relations = [r for r in mock_data["relations"] if r["manager_id"] == args[1]]
+                result_data = []
+                for relation in team_relations:
+                    member = next((u for u in mock_data["users"] if u["id"] == relation["member_id"]), None)
+                    if member:
+                        result_data.append({
+                            **relation,
+                            "users": member
+                        })
+                mock_eq.execute.return_value.data = result_data
             return mock_eq
+            
+        # If no args, return all users
+        if not args and not kwargs:
+            mock_select.execute.return_value.data = mock_data["users"]
+            return mock_select
+            
+        return mock_select
         mock_select.eq = eq_side_effect
         
         # Return all created users for general select
         if not args and not kwargs:
-            # For general select, return all users
             mock_select.execute.return_value.data = list(created_users.values())
-        mock_select.execute.return_value.data = mock_select.execute.return_value.data or []
+            return mock_select
+
+        # If we have args but no data set yet, initialize with empty list
+        mock_select.execute.return_value.data = []
         return mock_select
     mock_table.select = select_side_effect
     
     # Configure insert operations
     def insert_side_effect(data):
-        nonlocal user_id_counter
+        nonlocal user_id_counter, mock_data
         mock_insert = MagicMock()
         
-        # Generate unique ID for new user
-        user_id_counter += 1
-        new_id = f"user-{user_id_counter}"
-        
-        # Create user data
-        now = datetime.now().isoformat()
-        inserted_data = {
-            "id": new_id,
-            **data,
-            "created_at": now,
-            "updated_at": now
-        }
-        
-        # Store user for later lookups
-        created_users[new_id] = inserted_data
+        # Generate unique ID for new user or relation
+        if "email" in data:  # This is a user
+            user_id_counter += 1
+            new_id = f"user-{user_id_counter}"
+            now = datetime.now().isoformat()
+            inserted_data = {
+                "id": new_id,
+                **data,
+                "created_at": now,
+                "updated_at": now
+            }
+            mock_data["users"].append(inserted_data)
+        else:  # This is a manager-member relation
+            relation_id = f"relation-{len(mock_data['relations']) + 1}"
+            now = datetime.now().isoformat()
+            inserted_data = {
+                "id": relation_id,
+                **data,
+                "created_at": now
+            }
+            mock_data["relations"].append(inserted_data)
+            
         mock_insert.execute.return_value.data = [inserted_data]
         return mock_insert
     mock_table.insert = insert_side_effect

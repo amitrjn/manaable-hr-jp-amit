@@ -87,7 +87,7 @@ async def create_user(user: UserCreate):
             )
         
         # Create user with current timestamp
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(datetime.UTC).isoformat()
         response = client.table("users").insert({
             "email": user.email,
             "first_name": user.first_name,
@@ -139,7 +139,7 @@ async def update_user(user_id: str, user: UserUpdate):
             update_data["role"] = user.role
         
         # Update user with timestamp
-        update_data["updated_at"] = datetime.utcnow().isoformat()
+        update_data["updated_at"] = datetime.now(datetime.UTC).isoformat()
         response = client.table("users").update(update_data).eq("id", user_id).execute()
         if not response.data:
             raise HTTPException(
@@ -176,7 +176,7 @@ async def get_user_team(user_id: str):
         
         # Get team members with join
         team = client.table("manager_member_relations") \
-            .select("*, users!inner(*)") \
+            .select("*, users(*)") \
             .eq("manager_id", user_id) \
             .execute()
         
@@ -184,9 +184,9 @@ async def get_user_team(user_id: str):
             return []
             
         team_members = []
-        for member in team.data:
-            if member.get("users"):
-                team_members.append(member["users"])
+        for relation in team.data:
+            if relation.get("users"):
+                team_members.append(relation["users"])
         return team_members
     except HTTPException as e:
         raise e
@@ -231,7 +231,7 @@ async def assign_manager(relation: ManagerMemberRelation):
             )
         
         # Create assignment with current timestamp
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(datetime.UTC).isoformat()
         response = client.table("manager_member_relations").insert({
             "manager_id": relation.manager_id,
             "member_id": relation.member_id,
