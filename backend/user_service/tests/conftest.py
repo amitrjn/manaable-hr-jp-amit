@@ -30,6 +30,11 @@ def mock_supabase():
         "updated_at": datetime.now().isoformat()
     }
     
+    # Store created users for test consistency
+    created_users = {}
+    created_relations = []
+    user_id_counter = 0
+    
     # Configure mock table operations
     mock_table = MagicMock()
     
@@ -62,11 +67,6 @@ def mock_supabase():
         mock_select.execute.return_value.data = list(created_users.values())
         return mock_select
     mock_table.select = select_side_effect
-    
-    # Store created users for test consistency
-    created_users = {}
-    created_relations = []
-    user_id_counter = 0
     
     # Configure insert operations
     def insert_side_effect(data):
@@ -126,27 +126,17 @@ def mock_supabase():
                 
                 def relations_eq(*args, **kwargs):
                     mock_eq = MagicMock()
-                    if args[0] == "manager_id" and args[1] == "manager-id":
-                        mock_eq.execute.return_value.data = [{
-                            "id": "relation-1",
-                            "manager_id": "manager-id",
-                            "member_id": "test-id",
-                            "users": test_user,
-                            "created_at": datetime.now().isoformat()
-                        }]
+                    if args[0] == "manager_id":
+                        team_relations = [r for r in created_relations if r["manager_id"] == args[1]]
+                        for relation in team_relations:
+                            relation["users"] = created_users.get(relation["member_id"])
+                        mock_eq.execute.return_value.data = team_relations
                     else:
                         mock_eq.execute.return_value.data = []
                     return mock_eq
                 
                 mock_select.eq = relations_eq
-                mock_select.execute.return_value.data = [{
-                    "id": "relation-1",
-                    "manager_id": "manager-id",
-                    "member_id": "test-id",
-                    "users": test_user,
-                    "created_at": datetime.now().isoformat(),
-                    "updated_at": datetime.now().isoformat()
-                }] if args[0] == "manager_id" and args[1] == "manager-id" else []
+                mock_select.execute.return_value.data = list(created_relations)
                 return mock_select
             
             def relations_insert(data):
