@@ -10,6 +10,7 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
     env:
+      PYTHONPATH: ${{ github.workspace }}/backend/auth_service
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
