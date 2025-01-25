@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  backend-tests:
+  auth-service-tests:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}/backend/auth_service
@@ -30,6 +30,30 @@ jobs:
     - name: Run tests
       run: |
         cd backend/auth_service
+        pytest tests/ --cov=. --cov-report=xml
+
+  user-service-tests:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend/user_service
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        cd backend/user_service
+        python -m pip install --upgrade pip
+        pip install -r requirements-test.txt
+        pip install fastapi uvicorn
+    - name: Run tests
+      run: |
+        cd backend/user_service
         pytest tests/ --cov=. --cov-report=xml
     
   frontend-tests:

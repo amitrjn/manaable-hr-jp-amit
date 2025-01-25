@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from .config import supabase, JWT_SECRET
+from config import supabase, JWT_SECRET
 
 app = FastAPI(title="Auth Service")
 
