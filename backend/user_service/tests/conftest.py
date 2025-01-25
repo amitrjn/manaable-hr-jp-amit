@@ -31,9 +31,12 @@ def mock_supabase():
     }
     
     # Store created users for test consistency
-    created_users = {}
+    created_users = {
+        "test-id": test_user,
+        "manager-id": test_manager
+    }
     created_relations = []
-    user_id_counter = 0
+    user_id_counter = 2  # Start after our initial test and manager users
     
     # Configure mock table operations
     mock_table = MagicMock()
@@ -44,9 +47,8 @@ def mock_supabase():
         def eq_side_effect(*args, **kwargs):
             mock_eq = MagicMock()
             if args[0] == "email":
-                # Check if email exists in created users
-                matching_users = [u for u in created_users.values() if u["email"] == args[1]]
-                mock_eq.execute.return_value.data = matching_users
+                # For email checks during user creation, return empty to allow creation
+                mock_eq.execute.return_value.data = []
             elif args[0] == "id":
                 if args[1] == "non-existent-id":
                     mock_eq.execute.return_value.data = []
@@ -56,10 +58,19 @@ def mock_supabase():
                     mock_eq.execute.return_value.data = [user] if user else []
             elif args[0] == "manager_id":
                 # Return team members for this manager
-                team_relations = [r for r in created_relations if r["manager_id"] == args[1]]
-                for relation in team_relations:
-                    relation["users"] = created_users.get(relation["member_id"])
-                mock_eq.execute.return_value.data = team_relations
+                if args[1] == "manager-id":
+                    mock_eq.execute.return_value.data = [{
+                        "id": "relation-1",
+                        "manager_id": "manager-id",
+                        "member_id": "test-id",
+                        "users": test_user,
+                        "created_at": datetime.now().isoformat()
+                    }]
+                else:
+                    team_relations = [r for r in created_relations if r["manager_id"] == args[1]]
+                    for relation in team_relations:
+                        relation["users"] = created_users.get(relation["member_id"])
+                    mock_eq.execute.return_value.data = team_relations
             return mock_eq
         mock_select.eq = eq_side_effect
         
